@@ -1,0 +1,238 @@
+---
+title: "Práctica 2 - Limpieza y análisis de datos"
+author:
+- Pablo López Ladrón de Guevara
+- Rafael Corvillo Alonso
+date: "17/05/2021"
+output:
+  html_document:
+    highlight: default
+    number_sections: yes
+    theme: cosmo
+    toc: yes
+    toc_depth: 2
+    includes:
+      in_header: PEC-header.html
+  pdf_document:
+    highlight: zenburn
+    toc: yes
+---
+
+\pagebreak
+
+******
+# Descripción del dataset.
+******
+
+El conjunto de datos utilizado es el correspondiente a la competición Kaggle del hundimiento del Titanic. El objetivo es predecir si un pasajero sobrevivió o no al hundimiento del Titanic. Los datos utilizados son los disponibles en Kaggle y contienen los siguientes atributos:
+
+* **PassengerId**: Identificador único del pasajero.
+
+* **Survived**: Es la variable objetivo que se pretende predecir. Si el pasajero sobrevivió al naufragio, codificada como 0 (no) y 1 (si).
+
+* **Pclass**: Clase en la que viaja el pasajero: Primera segunda o tercera (1, 2, 3)
+
+* **Name**: Nombre del pasajero.
+
+* **Sex**: Sexo del pasajero.
+
+* **Age**: Edad del pasajero. Pueden tener números decimales, refiriéndose con ellos a los meses.
+
+* **SibSp**: Número de los siguientes tipos de familiares que viajan en el barco con el pasajero:
+  * Hermanos/as
+  * Hermanastros/as
+  * Marido/esposa (no se tiene en cuenta amantes o prometidas)
+
+* **Parch**: Número de los siguientes tipos de familiares que viajan en el barco con el pasajero:
+  *  Padres/madres
+  * Hijos/as
+  * Hijastros/as
+  * En el caso de que el niño viaje con una niñera, no se contará a la niñera como familiar.
+
+* **Ticket**: Identificador del billete.
+
+* **Fare**: Precio pagado por el billete.
+
+* **Cabin**: Número de camarote.
+
+* **Embarked**: Puerto de embarque el pasajero.
+
+
+\pagebreak
+
+******
+# Integración y selección de los datos de interés a analizar.
+******
+
+En Kaggle se encuentran los datos separados en dos archivos, uno para entrenar el modelo y otro para testearlo. Si abrimos los archivos con un editor de texto como Notepad++ vemos se utiliza codificación UTF-8 sin BOM. Así que leemos ambos archivos con codificación 'UTF-8'.
+
+```{r}
+titanic_train <- read.csv('train.csv', fileEncoding = 'UTF-8')
+```
+
+```{r}
+dim(titanic_train)
+```
+
+El conjunto de entrenamiento tiene 12 atributos y 891 registros.
+
+```{r}
+titanic_test <- read.csv('test.csv', fileEncoding = 'UTF-8')
+```
+
+```{r}
+dim(titanic_test)
+```
+
+El conjunto de entrenamiento tiene 11 atributos y 418 registros.
+
+Para realizar la limpieza y el análisis de datos, uniremos ambos archivos. Para ello debemos eliminar la variable objetivo "Survived" del conjunto de entrenamiento para tener el mismo número de atributos y poder unirlos.
+
+```{r}
+titanic_train_without_Survived <- titanic_train[,-2]
+```
+
+Unimos ambos juegos de datos con la función rbind().
+
+```{r}
+titanic_data <- rbind(titanic_train_without_Survived, titanic_test)
+```
+
+Una vez finalizadas las fases de limpieza de datos y análisis volveremos a separar los datos tal y como estaban utilizando los identificadores guiándonos por el número de fila (identificador único de cada pasajero). También se volverá a añadir el atributo objetivo al conjunto de entrenamiento.
+
+Observamoslas caracaterísticas de cada variable mediante la función.
+
+```{r}
+summary(titanic_data)
+```
+
+```{r}
+str(titanic_data)
+```
+
+\pagebreak
+
+******
+# Limpieza de los datos
+******
+
+## Datos Perdidos.
+
+Mostramos el número de valores vacíos en cada uno de los atributos del conjunto de datos.
+
+```{r}
+colSums(is.na(titanic_data))
+```
+
+La variable Age es la única que presenta NAs, 263 en concreto.
+
+Comprobamos si existen cadenas de caracteres vacías. 
+
+```{r}
+colSums(titanic_data=="")
+```
+
+Tanto en la variable Cabin como en Embarked encontramos datos perdidos de estas características. En el atributo Cabin existen 1014 cadenas de caracteres vacías y Embarked contiene 2.
+
+Los datos perdidos encontrados en las variables comentadas, se tratarán de forma diferente según las características de la variable o la cantidad de datos perdidos. Si las aproximaciones utilizadas para limpiar los datos son los correctos o no, no se sabe hasta que se implementan los modelos. Si no se consiguen los resultados deseados, una posibilidad para intentar mejorar el modelo es volver a este apartado y gestionar de forma diferente el tratamiento de elementos vacíos.
+
+Primero tratamos los datos vacíos de la variable Embarked. En este caso solo existen 2 elementos vacíos. Una primera posibilidad sería eliminar completamente esos dos registros. Pero con el objetivo de no perder información, imputaremos estos dos registros con la moda estadística de la variable. Para ello creamos la función getmode() que nos devuelve el valor más frecuente de una variable.
+
+```{r}
+getmode <- function(v) {
+   uniqv <- unique(v)
+   uniqv[which.max(tabulate(match(v, uniqv)))]
+}
+
+Embarked_mode <- getmode(titanic_data$Embarked)
+```
+
+Sustituimos los valores perdidos por la moda calculada.
+
+```{r}
+titanic_data$Embarked[titanic_data$Embarked == ""] <- Embarked_mode
+```
+
+En la variable Cabin el número de elementos vacíos es muy elevado, 1014 de un total de 1309 registros (77,1%). Debido a este alto porcentaje de elementos vacíos, se sustituyen las cadenas vacías con la constante "Desconocido". Otra posibilidad podría haber sido eliminar por completo la variable.
+
+
+```{r}
+titanic_data$Cabin[titanic_data$Cabin == ""] <- "Desconocido"
+```
+
+Por último, tratamos la variable age. Para imputar los valores perdidos de la variable con las edades de los pasajeros utilizamos la mediana de los valores existentes. Pero para intentar ser un poco más precisos, dividiremos el conjunto de datos en grupos y e imputaremos con la mediana de esos grupos en lugar de hacerlo directamente con el conjunto de datos completo. Los atributos elegidos para crear los grupos serán la clase en la que viaja el pasajero y el sexo. Como veremos en el aparatado de análisis, estas dos variables serán importantes a la hora de decidir si un pasajero sobrevive o no.
+
+Creamos con ayuda de la función tapply() la matriz con las medianas de las edades en los grupos comentados.
+
+```{r}
+Age_median_matrix <- tapply(titanic_data$Age, list(titanic_data$Pclass, titanic_data$Sex), median, na.rm = TRUE)
+```
+
+Mostramos la matriz.
+
+```{r}
+Age_median_matrix
+```
+
+Se observa que hay diferencia entre las medianas de los diferentes grupos. Con esto corroboramos que ha sido una aproximación acertada hacerlo de esta manera.
+
+Sustituimos los elementos vacíos de edad con los valores correspondientes de la matriz de medianas calculadas.
+
+```{r}
+titanic_data$Age[is.na(titanic_data$Age) & titanic_data$Sex == "female" & titanic_data$Pclass == "1"] <- Age_median_matrix[1,1]
+
+titanic_data$Age[is.na(titanic_data$Age) & titanic_data$Sex == "female" & titanic_data$Pclass == "2"] <- Age_median_matrix[2,1]
+
+titanic_data$Age[is.na(titanic_data$Age) & titanic_data$Sex == "female" & titanic_data$Pclass == "3"] <- Age_median_matrix[3,1]
+
+titanic_data$Age[is.na(titanic_data$Age) & titanic_data$Sex == "male" & titanic_data$Pclass == "1"] <- Age_median_matrix[1,2]
+
+titanic_data$Age[is.na(titanic_data$Age) & titanic_data$Sex == "male" & titanic_data$Pclass == "2"] <- Age_median_matrix[2,2]
+
+titanic_data$Age[is.na(titanic_data$Age) & titanic_data$Sex == "male" & titanic_data$Pclass == "3"] <- Age_median_matrix[3,2]
+```
+
+## Valores extremos.
+
+Mostramos los diagramas de cajas de las variables contínuas del dataset, Age y Fare, para comprobar si existen outliers.
+
+Comenzamos observando el atributo correspondiente al precio de los billetes.
+
+```{r}
+boxplot(titanic_data$Fare, main = "Fare")
+```
+
+Utilizamos la función boxplot.stats() para obtener las estadísticas de forma numérica.
+
+```{r}
+boxplot.stats(titanic_data$Fare)$stats
+```
+
+Existen valores extremos por encima del bigote superior del boxplot (65). La distribución de esta variable está muy desplazada a la izquierda. Esto es debido a que el 50% de los datos se encuentran entre 7,89 y 31,27. Pero se vendieron billetes muy por encima de esos precios. Esta desigualdad en los precios es plausible, ya que al tratarse de un transatlántico de lujo, pudo haber diferentes paquetes de precios con diferentes características. Y los paquetes más lujosos estarían destinados para los pasajeros más selectos. Un ejemplo sería el billete de 500$, del que solo existe uno.
+
+Vemos cuántos ouliers son identificados mediante el diagrama de caja.
+
+```{r}
+length(titanic_data$Fare[titanic_data$Fare > 65])
+```
+
+Aunque estos 172 registros son posibles como ya hemos comentado, los trataremos de cara a mejorar el funcionamiento de los modelos que se elaborarán. A la hora de tratar los outliers, se pueden realizar imputación de datos como en el caso de los datos perdidos. En este caso realizaremos la técnica llamada Capping. Imputamos los outliers por encima del bigote superior con dicho valor.
+
+```{r}
+titanic_data$Fare[titanic_data$Fare > 65] <- 65
+```
+
+Mostramos el nuevo diagrama boxplot sin valores extremos.
+
+```{r}
+boxplot(titanic_data$Fare, main = "Fare")
+```
+
+Analizamos a continuación los valores extremos del atributo correspondiente a la edad de los pasajeros.
+
+```{r}
+boxplot(titanic_data$Age, main = "Age")
+```
+
+Se observan valores extremos tanto por encima, como por debajo de los bigotes del gráfico. En este caso es totalmente posible que viajen personas por encima de 60 años y recién nacidos en el barco. Una posible aproximación para tratar estos outliers podría ser discretizar la variable. Pero de momento, se dejará tal y como está, ya no queremos perder información acerca de la edad de los pasajeros. Si al construir el modelo no obtenemos los valores deseados, se puede afrontar este puto de un forma diferente para mejorarlo.
+
