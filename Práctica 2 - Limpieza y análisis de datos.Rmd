@@ -18,6 +18,14 @@ output:
     toc: yes
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load_libraries, include=FALSE}
+library(car)
+```
+
 \pagebreak
 
 ******
@@ -44,7 +52,7 @@ El conjunto de datos utilizado es el correspondiente a la competición Kaggle de
   * Marido/esposa (no se tiene en cuenta amantes o prometidas)
 
 * **Parch**: Número de los siguientes tipos de familiares que viajan en el barco con el pasajero:
-  *  Padres/madres
+  * Padres/madres
   * Hijos/as
   * Hijastros/as
   * En el caso de que el niño viaje con una niñera, no se contará a la niñera como familiar.
@@ -66,23 +74,21 @@ El conjunto de datos utilizado es el correspondiente a la competición Kaggle de
 
 En Kaggle se encuentran los datos separados en dos archivos, uno para entrenar el modelo y otro para testearlo. Si abrimos los archivos con un editor de texto como Notepad++ vemos se utiliza codificación UTF-8 sin BOM. Así que leemos ambos archivos con codificación 'UTF-8'.
 
-```{r}
+```{r Carga del conjunto de datos}
+# Carga del conjunto de datos de entrenamiento y test
 titanic_train <- read.csv('train.csv', fileEncoding = 'UTF-8')
-```
+titanic_test <- read.csv('test.csv', fileEncoding = 'UTF-8')
 
-```{r}
+# Comprobamos que se cargan correctamente
+head(titanic_train)
+head(titanic_test)
+
+# Dimensiones de los datos
 dim(titanic_train)
+dim(titanic_test)
 ```
 
 El conjunto de entrenamiento tiene 12 atributos y 891 registros.
-
-```{r}
-titanic_test <- read.csv('test.csv', fileEncoding = 'UTF-8')
-```
-
-```{r}
-dim(titanic_test)
-```
 
 El conjunto de entrenamiento tiene 11 atributos y 418 registros.
 
@@ -104,10 +110,12 @@ Observamoslas caracaterísticas de cada variable mediante la función.
 
 ```{r}
 summary(titanic_data)
+#summary(titanic_train)
 ```
 
 ```{r}
 str(titanic_data)
+#str(titanic_train)
 ```
 
 \pagebreak
@@ -122,6 +130,7 @@ Mostramos el número de valores vacíos en cada uno de los atributos del conjunt
 
 ```{r}
 colSums(is.na(titanic_data))
+#colSums(is.na(titanic_train))
 ```
 
 La variable Age es la única que presenta NAs, 263 en concreto.
@@ -130,6 +139,7 @@ Comprobamos si existen cadenas de caracteres vacías.
 
 ```{r}
 colSums(titanic_data=="")
+#colSums(titanic_train=="")
 ```
 
 Tanto en la variable Cabin como en Embarked encontramos datos perdidos de estas características. En el atributo Cabin existen 1014 cadenas de caracteres vacías y Embarked contiene 2.
@@ -145,12 +155,14 @@ getmode <- function(v) {
 }
 
 Embarked_mode <- getmode(titanic_data$Embarked)
+#Embarked_mode <- getmode(titanic_train$Embarked)
 ```
 
 Sustituimos los valores perdidos por la moda calculada.
 
 ```{r}
 titanic_data$Embarked[titanic_data$Embarked == ""] <- Embarked_mode
+#titanic_train$Embarked[titanic_train$Embarked == ""] <- Embarked_mode
 ```
 
 En la variable Cabin el número de elementos vacíos es muy elevado, 1014 de un total de 1309 registros (77,1%). Debido a este alto porcentaje de elementos vacíos, se sustituyen las cadenas vacías con la constante "Desconocido". Otra posibilidad podría haber sido eliminar por completo la variable.
@@ -166,6 +178,7 @@ Creamos con ayuda de la función tapply() la matriz con las medianas de las edad
 
 ```{r}
 Age_median_matrix <- tapply(titanic_data$Age, list(titanic_data$Pclass, titanic_data$Sex), median, na.rm = TRUE)
+#Age_median_matrix <- tapply(titanic_train$Age, list(titanic_train$Pclass, titanic_train$Sex), median, na.rm = TRUE)
 ```
 
 Mostramos la matriz.
@@ -190,6 +203,13 @@ titanic_data$Age[is.na(titanic_data$Age) & titanic_data$Sex == "male" & titanic_
 titanic_data$Age[is.na(titanic_data$Age) & titanic_data$Sex == "male" & titanic_data$Pclass == "2"] <- Age_median_matrix[2,2]
 
 titanic_data$Age[is.na(titanic_data$Age) & titanic_data$Sex == "male" & titanic_data$Pclass == "3"] <- Age_median_matrix[3,2]
+
+#titanic_train$Age[is.na(titanic_train$Age) & titanic_train$Sex == "female" & titanic_train$Pclass == "1"] <- Age_median_matrix[1,1]
+#titanic_train$Age[is.na(titanic_train$Age) & titanic_train$Sex == "female" & titanic_train$Pclass == "2"] <- Age_median_matrix[2,1]
+#titanic_train$Age[is.na(titanic_train$Age) & titanic_train$Sex == "female" & titanic_train$Pclass == "3"] <- Age_median_matrix[3,1]
+#titanic_train$Age[is.na(titanic_train$Age) & titanic_train$Sex == "male" & titanic_train$Pclass == "1"] <- Age_median_matrix[1,2]
+#titanic_train$Age[is.na(titanic_train$Age) & titanic_train$Sex == "male" & titanic_train$Pclass == "2"] <- Age_median_matrix[2,2]
+#titanic_train$Age[is.na(titanic_train$Age) & titanic_train$Sex == "male" & titanic_train$Pclass == "3"] <- Age_median_matrix[3,2]
 ```
 
 ## Valores extremos.
@@ -236,3 +256,122 @@ boxplot(titanic_data$Age, main = "Age")
 
 Se observan valores extremos tanto por encima, como por debajo de los bigotes del gráfico. En este caso es totalmente posible que viajen personas por encima de 60 años y recién nacidos en el barco. Una posible aproximación para tratar estos outliers podría ser discretizar la variable. Pero de momento, se dejará tal y como está, ya no queremos perder información acerca de la edad de los pasajeros. Si al construir el modelo no obtenemos los valores deseados, se puede afrontar este puto de un forma diferente para mejorarlo.
 
+
+## Convertir datos a factor
+
+```{r Conversión de variables}
+titanic_train$Survived <- as.factor(titanic_train$Survived)
+titanic_train$Pclass <- as.factor(titanic_train$Pclass)
+titanic_train$Sex <- as.factor(titanic_train$Sex)
+titanic_train$Embarked <- as.factor(titanic_train$Embarked)
+```
+
+******
+# Análisis de los datos
+******
+
+## Selección de los grupos de datos que se quieren analizar/comparar (planificación de los análisis a aplicar)
+
+AQUI HAY QUE SELECCIONAR LOS GRUPOS DE DATOS QUE VAMOS A ANALIZAR Y PLANIFICAR LOS ANÁLISIS (PREGUNTAS A RESPONDER)
+
+```{r Variables cuantitativas}
+titanic_train.cuant <- titanic_train[, c("Age", "SibSp", "Parch", "Fare")]
+```
+
+
+## Comprobación de la normalidad y homogeneidad de la varianza
+
+Para comprobar la normalidad de las variable cuantitativas vamos a utilizar el test de Shapiro-Wilk, ya que se considera uno de los métodos más potentes para contrastar la normalidad. Este método se basa en el contraste de hipótesis, asumiendo como hipótesis nula que la población sigue una distribución normal. Por tanto, nos basaremos en el *p-valor* para determinar si aceptamos o rechazamos la hipótesis nula.
+
+```{r Test de normalidad Shapiro-Wilk}
+# Test de normalidad de las variables cuantitativas
+shapiro.test(titanic_train$Age)
+shapiro.test(titanic_train$SibSp)
+shapiro.test(titanic_train$Parch)
+shapiro.test(titanic_train$Fare)
+```
+
+Si usamos un nivel de significancia de $\alpha=0.05$, podemos ver que en todos los tests anteriores se rechaza la hipótesis nula con un nivel del confianza del 95%, ya que $p\_valor<0.05$ en todos los tests. Por tanto, podemos decir que las variables cuantitativas de este conjunto de datos (`Age`, `SibSp`, `Parch` y `Fare`) no siguen una distribución normal. Vamos a comparar las distribuciones de estas variables con la de una normal de forma visual mediante un gráfico QQ.
+
+```{r Gráfico QQ}
+# Gráficos QQ
+qqnorm(titanic_train.cuant$Age, main = "QQ plot Age", col = 'blue')
+qqline(titanic_train.cuant$Age)
+
+qqnorm(titanic_train.cuant$SibSp, main = "QQ plot SibSp", col = 'blue')
+qqline(titanic_train.cuant$SibSp)
+
+qqnorm(titanic_train.cuant$Parch, main = "QQ plot Parch", col = 'blue')
+qqline(titanic_train.cuant$Parch)
+
+qqnorm(titanic_train.cuant$Fare, main = "QQ plot Fare", col = 'blue')
+qqline(titanic_train.cuant$Fare)
+```
+
+Comprobamos que, como hemos obtenido con el test de Shapiro-Wilk, las variables cuantitativas no siguen una distribución normal. Vemos que la variable `Age` se encuentra cerca de la normalidad, por tanto, como tenemos una cantidad de observaciones suficientemente grande podemos asumir que esta variable sigue una distribución normal basándonos en el teorema central del límite.
+
+Ahora vamos a comprobar la homocedasticidad para las variables anteriores diferenciando en distintos grupos. Para la variable `Age`, como hemos supuesto normalidad, usaremos el test de Levene y para el resto de variables usaremos el test de Fligner-Killeen. Ambas pruebas realizan un contraste de hipótesis donde la hipótesis nula asume igualdad de varianzas en los diferentes grupos de datos.
+
+```{r Test de homocedasticidad para Age}
+# Comprobación de la homocedasticidad para Age
+leveneTest(Age ~ Pclass, data = titanic_train)
+leveneTest(Age ~ Sex, data = titanic_train)
+leveneTest(Age ~ Embarked, data = titanic_train)
+leveneTest(Age ~ Survived, data = titanic_train)
+```
+
+De los resultados de los tests de Levene podemos decir que la variable `Age` presenta herocedasticidad con las variables `Pclass`, `Embarked` y `Survived`, y homocedasticidad con la variable `Sex`. Por tanto, la variable `Age` tendrá varianzas iguales entre los pasajeros de distintos sexo. En cambio habrá distinta varianza de la variable `Age` entre los pasajeros que sobrevivieron y los que no o entre las distintas clases.
+
+Para comprobar la homocedasticidad en las variables `SibSp` y `Parch` vamos a sumarlas y usar una variable que indique el número de familiares que iban a bordo del Titanic.
+
+```{r Test de homocedasticidad para SibSp+Parch}
+# Comprobación de la homocedasticidad para SibSp+Parch
+fligner.test(SibSp+Parch ~ Pclass, data = titanic_train)
+fligner.test(SibSp+Parch ~ Sex, data = titanic_train)
+fligner.test(SibSp+Parch ~ Embarked, data = titanic_train)
+fligner.test(SibSp+Parch ~ Survived, data = titanic_train)
+```
+
+Como podemos ver el tamaño de la familia tendrá igualdad de varianzas (homocedasticidad) en las diferentes clases (`Pclass`) y en el puerto de embarque (`Embarked`). En cambio, presenta varianzas distintas (heterocedasticidad) entre hombres y mujeres y entre los pasajeros que sobrevivieron y los que no.
+
+```{r Test de homocedasticidad para Fare}
+# Comprobación de la homocedasticidad para Fare
+fligner.test(Fare ~ Pclass, data = titanic_train)
+fligner.test(Fare ~ Sex, data = titanic_train)
+fligner.test(Fare ~ Embarked, data = titanic_train)
+fligner.test(Fare ~ Survived, data = titanic_train)
+```
+
+Vemos que la variable `Fare` presenta heterocedasticidad entre las distintas clases, entre hombre y mujeres, entre los distintos puertos de embarque y entre los pasajeros que sobrevivieron y los que no.
+
+Para terminar vamos a ver la relación de la variable `Survived` con el resto de variables que estamos analizando, tanto cuantitativas como categóricas. Hemos visto que la variable `Age` es la única para la que se ha asumido normalidad pero presenta heterocedasticidad para la variable `Survived`. Por tanto, para todas las variables cuantitativas tendremos que utilizar pruebas no paramétricas como Wilcoxon (datos dependientes) o Mann-Whitney (datos independientes). Estas dos pruebas se aplican indistintamente con la función `wilcox.test()`.
+
+```{r Relación de Survived con las variable cuantitativas}
+# Relación de Survived con las variable cuantitativas
+wilcox.test(Age ~ Survived, data = titanic_train)
+wilcox.test(SibSp+Parch ~ Survived, data = titanic_train)
+wilcox.test(Fare ~ Survived, data = titanic_train)
+```
+
+De acuerdo a los resultados anteriores podemos decir que se observan diferencias estadísticamente significantivas en la edad, en el tamaño de la familia y en el precio del ticket de los pasajeros que sobrevivieron y los que no.
+
+Para comparar si existen diferencias significativas en las variable categóricas entre los pasajeros que sobrevivieron y los que no vamos a aplicar el test de $\chi^2$.
+
+```{r Relación de Survived con las variable categóricas}
+# Relación de Survived con las variable categóricas
+table.Pclass <- table(titanic_train$Pclass, titanic_train$Survived)
+table.Pclass
+chisq.test(table.Pclass)
+
+table.Sex <- table(titanic_train$Sex, titanic_train$Survived)
+table.Sex
+chisq.test(table.Sex)
+
+table.Embarked <- table(titanic_train$Embarked, titanic_train$Survived)
+table.Embarked
+chisq.test(table.Embarked)
+```
+
+con estos resultados comprobamos que se rechaza la hipótesis nula para los tres casos, por tanto, observamos que tanto el sexo, como la clase y el puerto de embarque tuvieron repercusión en si un pasajero finalmente sobrevivió al accidente o no.
+
+AÑADIR TAMBIÉN ANÁLISIS DE CORRELACIONES
