@@ -133,7 +133,7 @@ colSums(is.na(titanic_data))
 #colSums(is.na(titanic_train))
 ```
 
-La variable Age es la única que presenta NAs, 263 en concreto.
+Existen dos variables que continen valores vacíos: la variable Age con 263 NAs y la variable Fare con 1 NA.
 
 Comprobamos si existen cadenas de caracteres vacías. 
 
@@ -165,14 +165,27 @@ titanic_data$Embarked[titanic_data$Embarked == ""] <- Embarked_mode
 #titanic_train$Embarked[titanic_train$Embarked == ""] <- Embarked_mode
 ```
 
-En la variable Cabin el número de elementos vacíos es muy elevado, 1014 de un total de 1309 registros (77,1%). Debido a este alto porcentaje de elementos vacíos, se sustituyen las cadenas vacías con la constante "Desconocido". Otra posibilidad podría haber sido eliminar por completo la variable.
+En el caso del atributo Fare, existe únicamente un valor vacío. Como en el caso anterior, una posibilidad sería eleminar el registro en cuestión. Pero obtaremos por imputar dicho valor para no perder información. Para ello utilizaremos la mediana. En lugar de calcular la mediana de todos los datos disponibles, calcularemos la mediana de los registros que pertenezcan a la misma clase. Como veremos en el apartado donde se tratan los outliers, la dispersión de la variable Fare es grande. Así que tiene sentido centrarse solo en una clase, ya que los precios dentro de ella puede que varíen menos.
 
+Vemos en que clase se encuentra el valor perdido.
+
+```{r}
+titanic_data$Pclass[is.na(titanic_data$Fare)]
+```
+
+Sustituimos el valor por la mediana de los valores de esa clase.
+
+```{r}
+titanic_data$Fare[is.na(titanic_data$Fare)] <- median(titanic_data$Fare[titanic_data$Pclass == 3], na.rm = TRUE)
+```
+
+En la variable Cabin el número de elementos vacíos es muy elevado, 1014 de un total de 1309 registros (77,1%). Debido a este alto porcentaje de elementos vacíos, se sustituyen las cadenas vacías con la constante "Desconocido". Otra posibilidad podría haber sido eliminar por completo la variable. Esta segunda aproximación también tiene sentido debido al elevado número de valores vacíos y a que el atributo Pclass nos puede dar una información similar de cara a saber si un pasajero sobrevive o no. Los camarotes de primera clase estarían situados cerca de cubierta, por la probabilidad de sobrevivir sería mayor que la de un pasejero que viaje en tercera clase y cuyo camarote se encuentre en una planta muy inferior.
 
 ```{r}
 titanic_data$Cabin[titanic_data$Cabin == ""] <- "Desconocido"
 ```
 
-Por último, tratamos la variable age. Para imputar los valores perdidos de la variable con las edades de los pasajeros utilizamos la mediana de los valores existentes. Pero para intentar ser un poco más precisos, dividiremos el conjunto de datos en grupos y e imputaremos con la mediana de esos grupos en lugar de hacerlo directamente con el conjunto de datos completo. Los atributos elegidos para crear los grupos serán la clase en la que viaja el pasajero y el sexo. Como veremos en el aparatado de análisis, estas dos variables serán importantes a la hora de decidir si un pasajero sobrevive o no.
+Por último, tratamos la variable age. Para imputar los valores perdidos de las edades de los pasajeros utilizamos una aproximación similar a la aplicada con la variable Fare. Pero para intentar ser un poco más precisos, dividiremos el conjunto de datos en seis grupos y e imputaremos con la mediana de cada grupo. Los atributos elegidos para crear los grupos serán la clase en la que viaja el pasajero y el sexo. Como veremos en el aparatado de análisis, estas dos variables serán importantes a la hora de decidir si un pasajero sobrevive o no.
 
 Creamos con ayuda de la función tapply() la matriz con las medianas de las edades en los grupos comentados.
 
@@ -236,7 +249,7 @@ Vemos cuántos ouliers son identificados mediante el diagrama de caja.
 length(titanic_data$Fare[titanic_data$Fare > 65])
 ```
 
-Aunque estos 172 registros son posibles como ya hemos comentado, los trataremos de cara a mejorar el funcionamiento de los modelos que se elaborarán. A la hora de tratar los outliers, se pueden realizar imputación de datos como en el caso de los datos perdidos. En este caso realizaremos la técnica llamada Capping. Imputamos los outliers por encima del bigote superior con dicho valor.
+Aunque estos 171 registros son posibles como ya hemos comentado, los trataremos de cara a mejorar el funcionamiento de los modelos que se elaborarán. A la hora de tratar los outliers, se pueden realizar imputación de datos como en el caso de los datos perdidos. En este caso realizaremos la técnica llamada Capping. Imputamos los outliers por encima del bigote superior con dicho valor.
 
 ```{r}
 titanic_data$Fare[titanic_data$Fare > 65] <- 65
@@ -254,8 +267,32 @@ Analizamos a continuación los valores extremos del atributo correspondiente a l
 boxplot(titanic_data$Age, main = "Age")
 ```
 
-Se observan valores extremos tanto por encima, como por debajo de los bigotes del gráfico. En este caso es totalmente posible que viajen personas por encima de 60 años y recién nacidos en el barco. Una posible aproximación para tratar estos outliers podría ser discretizar la variable. Pero de momento, se dejará tal y como está, ya no queremos perder información acerca de la edad de los pasajeros. Si al construir el modelo no obtenemos los valores deseados, se puede afrontar este puto de un forma diferente para mejorarlo.
+Se observan valores extremos tanto por encima, como por debajo de los bigotes del gráfico. En este caso es totalmente posible que viajen personas por encima de 60 años y recién nacidos en el barco. Una posible sería no hacer nada con estos outliers para no perder información. En su lugar, optaremos por discretizar la variable. Se opta por crear cinco niveles de frecuencia parecida. Mostramos el histograma del atributo para ver cómo se distribuye. Mostramos agrupaciones de dos en dos, para obaservarlo con más detalle.
 
+```{r}
+hist(titanic_data$Age,breaks = 40)
+```
+Lo primero que se observa, es que gran parte de los datos se concentran en tre 20 y 40. Por lo que en ese rango habrá más niveles.
+
+Al existir un total de 1309 registros en el conjunto de datos y querer discretizar la edad en 5 niveles, el objetivo será obtener aproximadametne 260 registros en cada nivel. observando el histograma y probando diferetentes límites, los cinco niveles de discretización serán los siguientes:
+
+* Joven: [0,20]
+* Joven-Adulto: [21,24]
+* Adulto: [25,28]
+* Adulto-Mayor: [29,39] (Tras jugar un poco con los valores se ha visto que se reparte la densidad en los niveles con 39 que con 40).
+* Mayor: [40,80]
+
+Para ello utilizamos la función cut(). Activamos la opción ordered_result ya que existe un orden de menor a mayor entre los niveles establecidos.
+
+```{r}
+titanic_data$Age <- cut(titanic_data$Age, breaks = c(0,20,24,28,39,80), ordered_result = TRUE, labels = c("Joven", "Joven-Adulto", "Adulto", "Adulto-Mayor","Mayor"))
+```
+
+Comprobamos gráficamente que la variable discretizada se distribuye de manera similar en cada uno de sus niveles.
+
+```{r}
+plot(titanic_data$Age)
+```
 
 ## Convertir datos a factor
 
