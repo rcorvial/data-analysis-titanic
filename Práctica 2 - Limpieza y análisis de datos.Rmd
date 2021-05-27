@@ -28,6 +28,10 @@ library(rminer)
 library(rpart)
 library(rpart.plot)
 library(caret)
+library(ggplot2)
+library(grid)
+library(gridExtra)
+library(corrplot)
 ```
 
 \pagebreak
@@ -482,3 +486,72 @@ confusionMatrix(pred_rf,titanic_test$Survived,positive="1")
 Con el modelo randon forest el 80,13 % de los registros de test fueron correctamente clasificados.La precisión de este modelo ha aumentado casi 2% respecto al árbol de decisión.
 
 La sensibilidad de este modelo es 67,54% y su especificidad 87,98%. Si comparamos estos valores con los obtenidos mediante el árbol de decison, se obtiene que el modelo randon forest clasifica algo peor los pasajeros que no sobrevivieron, pero en cambio, los pasajeros que si sobrebivieron son clasificados con un porcentaje bastante mayor correctamente.
+
+******
+# Representación de los resultados a partir de tablas y gráficas.
+******
+
+A lo largo de la práctica se ha hecho uso de diferentes tipos de gráficas para comprender mejor los datos y analizarlos. En el apartado anterior por ejemplo, se mostró el árbol de decisión gráficamente para saber que variables utilizaba en la toma de decicisones. También hemos usado gráficos QQ para comprobar la normalidad de algunas variables, diagramas de caja para observar los valores extremos o histogramas para ver la distribución de la variable Age. En este apartado mostraremos algunos ejemplos más para entender mejor el conjunto de datos.
+
+Primeramente se vuelve a mostrar el histograma de la edad de los pasajeros (sin descretizar), pero esta vez añadimos la información si sobreviven o no. Esta vez utlizaremos la función ggplot. 
+
+```{r}
+ggplot(data = titanic_data[!(is.na(titanic_data[1:filas,]$Age)),],aes(x=Age,fill=Survived))+geom_histogram(binwidth =3)
+```
+
+Como ya se observó en su momento, la mayoría de pasajeros se encuentran entre los 20 y cuarenta años. También se observa que la tasa de superviviencia entre los pasajeros menores es bastante alta. Mientras que en los pasajeros entorno a los 25 años sobrebieron pocos en relación al número total de personas de esa edad (Unos 30 de más de 150).
+
+Mostramos ahora un gráfico de barras con el número de pasajeros por edad y la información de si sobrebieron al accidente.
+
+```{r}
+ggplot(data=titanic_data,aes(x=Sex,fill=Survived))+geom_bar()
+```
+
+El número de pasajeros varones es casi el doble que el de mujeres. Pero la proporción de mujeres que sobrevivieron es mucho mayor que la de hombres.
+
+Para observar con más detalle las proporciones de las gráficas anteriores, mostramos a continuación las tres variables en una serie de gráficas de frecuencia. Pero en este caso utilizaremos la varible edad discretizada.
+
+```{r}
+ggplot(data = titanic_data[1:filas,],aes(x=Sex,fill=Survived))+geom_bar(position="fill")+facet_wrap(~Age_d)
+```
+
+En todas las edades se observa una gran desigualdad entre el índice de superviviencia si se comparan hombres con mujeres. Las mujeres se mantienen entorno al 75%, mientras que los hombres no llegan casi ni al 25%. Dentro de la edad joven, que comprende pasajeros por debajo de 20 años, es la única en la que la proporción de pasajeros masculinos que sobreviven sobrepasa (por poco) ese 25%. La menor frecuencia de pasajeros salvados tanto en mujeres como en hombres, la encontramos entre la categoría de edad Joven-Adulto. Este nivel de Age abarca pasajeros entre los 20 y los 24 años.
+
+Mostramos una gráfica similar pero este caso nos interesa analizar la supervivencia de los pasajeros respecto a la clase en la que viajaron y el muelle donde embarcaron.
+
+```{r}
+ggplot(data = titanic_data[1:filas,],aes(x=Embarked,fill=Survived))+geom_bar(position="fill")+facet_wrap(~Pclass)
+```
+
+Lo primero que se observa es que la tasa de pasajeros salvados es mucho menor en los pasajeros de tercera clase. En cambio, no existe una gran diferencia entre los de segunda y tercera clase, aún así el índice de superviviencia es algo mayor dentro de primera clase. Otro dato curioso a destacar, es que la frecuencia de superviviencia varía bastante dependiendo del muello de embarque.
+
+comparamos mediante dos diagramas de barras colocados uno junto al otro, la variables que indican la información familiar SibSp y Parch.
+
+```{r}
+grid.newpage()
+Graf1 <- ggplot(data = titanic_data,aes(x=SibSp,fill=Survived))+geom_bar()+theme(legend.position="none")
+Graf2 <- ggplot(data = titanic_data,aes(x=Parch,fill=Survived))+geom_bar()
+
+grid.arrange(Graf1, Graf2, ncol=2)
+```
+
+La gran parte de pasajeros viajó sin familiares. Pero se observa qeu la forma de ambas gráficas son similares. Esto puede indicar la presencia de correlaciones. Para ver sie esto es así mostraremos la matriz de correlación de estas dos variables y añadimos tambíén la variable contínua Age.
+
+Debemos trabajar con variables numéricas, así que convertimos los datos correspondientes y preparamos el conjunto de datos.
+
+```{r}
+titanic_data_num <- titanic_data[,c("Age", "SibSp", "Parch")]
+
+titanic_data_num$Age <- as.numeric(titanic_data_num$Age)
+titanic_data_num$SibSp <- as.numeric(titanic_data_num$SibSp)
+titanic_data_num$Parch <- as.numeric(titanic_data_num$Parch)
+```
+
+Mostramos la matriz de correlación gráficamente con ayuda de la función corrplot.
+
+```{r}
+correlacion <- round(cor(titanic_data_num),1)
+corrplot(correlacion, method="number", type="upper")
+```
+
+Se ve que existe algo de correlación positiva entre las variables SibSp y Parch, aunque no tan fuerte como se esperaba por la similitud de las gráficas. ESta correlación es lógica, ya que si un hombre o una mujer viaja con hijos, es bastante probale que también viaje con su marido o mujer.
