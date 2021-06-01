@@ -240,19 +240,7 @@ Vemos cuántos ouliers son identificados mediante el diagrama de caja.
 length(titanic_data$Fare[titanic_data$Fare > 65])
 ```
 
-Aunque estos 166 registros son posibles como ya hemos comentado, los trataremos de cara a mejorar el funcionamiento de los modelos que se elaborarán. A la hora de tratar los outliers, se pueden realizar imputación de datos como en el caso de los datos perdidos. En este caso realizaremos la técnica llamada Capping, que consiste en imputar los outliers por encima del bigote superior con dicho valor.
-
-```{r Corrección de outliers de Fare}
-# Corrección de outliers de Fare
-titanic_data$Fare[titanic_data$Fare > 65] <- 65
-```
-
-Mostramos el nuevo diagrama boxplot sin valores extremos.
-
-```{r Diagrama de caja de Fare con los outliers corregidos}
-# Diagrama de caja de Fare con los outliers corregidos
-#boxplot(titanic_data$Fare, main = "Fare")
-```
+Una posible opción sería tratar estos 166 valores con alguna técnica de imputación como hemos hecho en el apartado anteror. Pero como acabamos de comentar, estos valores extremos se consideran válidos. Por lo que optaremos por dejar la variable sin tratar para no perder información y no cambiar su distribución.
 
 Analizamos a continuación los valores extremos del atributo correspondiente a la edad de los pasajeros.
 
@@ -261,37 +249,30 @@ Analizamos a continuación los valores extremos del atributo correspondiente a l
 boxplot(titanic_data$Age, main = "Age")
 ```
 
-Se vuelven a observar valores extremos por encima del bigotes superior del gráfico. Como en el caso anterior es totalmente posible que viajen personas por encima de 60 años. Una posible solución sería no hacer nada con estos outliers para no perder información. En su lugar, optaremos por discretizar la variable. Aunque decidimos mantener la variable original, para poder utilizarla en algunos subapartados del análisis. 
+Se vuelven a observar valores extremos por encima del bigotes superior del gráfico. Como en el caso anterior es totalmente posible que viajen personas por encima de 60 años. Por esta ranzón y para no perder información valiosa, dejaremos la variable sin modificar en el dataset. 
 
-Para la discretización hemos decididos crear cinco niveles de frecuencia parecida. Mostramos el histograma del atributo para ver cómo se distribuye. Mostramos agrupaciones de dos en dos, para observarlo con más detalle. 
+Aunque en este caso, crearemos un nuevo atributo discretizado con tres niveles a partir de la variable edad. Los niveles corresponderán a niños, adultos y ancianos. Ya que son tres grupos de edad que nos puede interesar estudiar a la hora de saber si un pasajero sobrevive o no.
+
+Antes de realizar la discretación, mostramos el histograma de la variable para comprender mejor cómo se distribuye.
 
 ```{r}
-hist(titanic_data$Age,breaks = 40)
+hist(titanic_data$Age)
 ```
 
-Lo primero que se observa es que gran parte de los datos se concentran entre 20 y 40. Por lo que en ese rango habrá más niveles.
+Lo primero que se observa es que gran parte de los datos se concentran entre 20 y 40. Lo que nos indica que los tres niveles que queremos construir tendrán un número de registros muy desigual. Pero igualmente nuestro objetivo con la discretación es estudiar si se cumple la máxima "Mujeres, niños y ancianos primero" cuando se produce una accidente marítimo.
 
-Al existir un total de 891 registros en el conjunto de datos y querer discretizar la edad en 5 niveles, el objetivo será obtener aproximadamente 178 registros en cada nivel. observando el histograma y probando diferentes límites, los cinco niveles de discretización serán los siguientes:
+La división de los tres niveles se realizará de la siguiente manera:
 
-* Joven: [0,19]
-* Joven-Adulto: [20,24]
-* Adulto: [25,28]
-* Adulto-Mayor: [29,39] 
-* Mayor: [40,80]
+* Niño: [0,17]. Si el pasajero es menor de edad, se considera niño.
+* Adulto: [18,60]
+* Anciano: [61,80]. Podemos considerar ancianos a partir de los sesenta años, ya que el accidente tuvo lugar a principios del siglo XX.
 
 Para ello utilizamos la función cut(). Activamos la opción ordered_result ya que existe un orden de menor a mayor entre los niveles establecidos.
 
 ```{r Discretización de la variable Age}
-titanic_data$Age_d <- cut(titanic_data$Age, breaks = c(0,19,24,28,39,80),
+titanic_data$Age_d <- cut(titanic_data$Age, breaks = c(0,17,61,80),
                           ordered_result = TRUE,
-                          labels = c("Joven", "Joven-Adulto",
-                                     "Adulto", "Adulto-Mayor", "Mayor"))
-```
-
-Comprobamos gráficamente que la variable discretizada se distribuye de manera similar en cada uno de sus niveles.
-
-```{r}
-plot(titanic_data$Age_d)
+                          labels = c("Niño", "Adulto", "Anciano"))
 ```
 
 ******
@@ -546,7 +527,7 @@ Mostramos la matriz de confusión.
 confusionMatrix(pred_dt,titanic_test$Survived,positive="1")
 ```
 
-La precisión que nos da el modelo es de 78,19 %. El 78,19% de los registros han sido correctamente clasificados.
+La precisión que nos da el modelo es de 78,79 %. Es decir, el 78,79 % de los registros han sido correctamente clasificados.
 
 La función confusionMatrix() también nos facilita otros valores como la sensibilidad (tasa de verdaderos positivos) o la especificidad (tasa de verdaderos negativos). Estos valores son 60,53% y 90,16% respectivamente. Es decir, el modelo es mejor prediciendo correctamente registros negativos que positivos.
 
@@ -558,7 +539,7 @@ Calculamos un modelo Random Forest con una validación cruzada con 4 *folds*.
 Mediante la función train_control, especificamos las características comentadas del proceso de entrenamiento para crear el modelo.
 
 ```{r}
-train_control<- trainControl(method="cv", number=4)
+train_control<- trainControl(method="cv", number=6)
 ```
 
 Creamos el modelo.
@@ -581,9 +562,9 @@ Observamos la matriz de confusión.
 confusionMatrix(pred_rf,titanic_test$Survived,positive="1")
 ```
 
-Con el modelo Random Forest el 80,13 % de los registros de test fueron correctamente clasificados.La precisión de este modelo ha aumentado casi 2% respecto al árbol de decisión.
+Con el modelo Random Forest el 81,48 % de los registros de test fueron correctamente clasificados.La precisión de este modelo ha aumentado casi 3% respecto al árbol de decisión.
 
-La sensibilidad de este modelo es 67,54% y su especificidad 87,98%. Si comparamos estos valores con los obtenidos mediante el árbol de decisión, se obtiene que el modelo Random Forest clasifica algo peor los pasajeros que no sobrevivieron, pero en cambio, los pasajeros que sí sobrevivieron son clasificados correctamente con un porcentaje bastante mayor.
+La sensibilidad de este modelo es 60,53 % y su especificidad 94,54 %. Si comparamos estos valores con los obtenidos mediante el árbol de decisión, se obtiene que el modelo Random Forest clasifica igual de bien (o mal) los pasajeros que no sobrevivieron, pero en cambio, los pasajeros que sí sobrevivieron son clasificados correctamente con un porcentaje bastante mayor.
 
 ******
 # Representación de los resultados a partir de tablas y gráficas.
@@ -613,7 +594,9 @@ Para observar con más detalle las proporciones de las gráficas anteriores, mos
 ggplot(data = titanic_data,aes(x=Sex,fill=Survived))+geom_bar(position="fill")+facet_wrap(~Age_d)
 ```
 
-En todas las edades se observa una gran desigualdad entre el índice de supervivencia si se comparan hombres con mujeres. Las mujeres se mantienen entorno al 75%, mientras que los hombres no llegan casi ni al 25%. Dentro de la edad joven, que comprende pasajeros por debajo de 20 años, es la única en la que la proporción de pasajeros masculinos que sobreviven sobrepasa (por poco) ese 25%. La menor frecuencia de pasajeros salvados tanto en mujeres como en hombres, la encontramos entre la categoría de edad Joven-Adulto. Este nivel de `Age` abarca pasajeros entre los 20 y los 24 años.
+En todas las edades se observa una gran desigualdad entre el índice de supervivencia si se comparan hombres con mujeres. Destaca que las todas mujeres por encima de 60 años que viajaban en el barco se salvaron. Aunque según vimos en la distribución de los datos es posible que no fueran muchas. En cambio, la tasa de supervivencia de los hombres disminuye según avanza el grupo de edad. Aproximadametne el 40% de los niños de sexo masculino sobreviven al accidente, mientras que el porcentaje de ancianos hombres que sobrevieron al accidente disminuye a la mitad, un 20%.
+
+Por lo tanto, todo hace indicar que priorizaron a mujeres y niños a la hora de subir a los botes salvavidas. Como suele pasar en cualquier tipo de accidente marítimo. Respecto a los pasajeros por encima de 60 años, solo podemos afirmar que ningunga mujer murió en ese rango de edad, como ya se ha comentado.
 
 Mostramos una gráfica similar pero este caso nos interesa analizar la supervivencia de los pasajeros respecto a la clase en la que viajaron y el muelle donde embarcaron.
 
