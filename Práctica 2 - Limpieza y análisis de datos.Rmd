@@ -5,6 +5,9 @@ author:
 - Rafael Corvillo Alonso
 date: '`r format(Sys.Date(),"%e de %B, %Y")`'
 output:
+  pdf_document:
+    toc: yes
+    number_sections: yes
   html_document:
     highlight: default
     number_sections: yes
@@ -13,8 +16,6 @@ output:
     toc_depth: 2
     includes:
       in_header: PEC-header.html
-  pdf_document:
-    toc: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -37,7 +38,7 @@ library(corrplot)
 \pagebreak
 
 ******
-# 1. Descripción del dataset.
+# Descripción del dataset.
 ******
 
 El *Titanic* fue un transatlántico británico, el mayor barco de pasajeros del mundo al finalizar su construcción, que se hundió durante la noche del 14 y la madrugada del 15 de abril de 1912 durante su viaje inaugural desde Southampton a Nueva York. En el hundimiento del Titanic murieron 1496 personas de las 2208 que iban a bordo, lo que convierte a esta catástrofe en uno de los mayores naufragios de la historia ocurridos en tiempos de paz.
@@ -80,7 +81,7 @@ Tenemos a nuestra disposición un conjunto de datos con información de 891 pasa
 
 
 ******
-# 2. Integración y selección de los datos de interés a analizar.
+# Integración y selección de los datos de interés a analizar.
 ******
 
 Vamos a empezar cargando el conjunto de datos y posteriormente realizaremos un primer análisis visual de los datos cargados y sus tipos.
@@ -111,7 +112,7 @@ str(titanic_data)
 Como podemos ver en los valores resumen vamos a tener que realizar un tratamiento de valores ausentes, por ejemplo a la variable `Age` (177 observaciones con valor `NA`), además de analizar los valores extremos en otras variables con `Fare`. También podemos ver que algunas variables que parecen ser de tipo factor han sido cargadas con tipo texto o entero.
 
 
-## 2.1. Selección de los datos interés
+## Selección de los datos interés
 
 Las variables `Name` y `Ticket` no aportarán ninguna información de interés de cara a saber si un pasajero sobrevive o no. Además, la información que nos puede aportar `Ticket` ya la tenemos disponible en la variable `Fare`, ya que los tickets tienen asociados un precio, y la que nos puede aportar el apellido la tenemos de forma más completa en las variables `SibSp` y `Parch`.
 
@@ -122,7 +123,7 @@ titanic_data <- titanic_data[, !drop_data]
 ```
 
 
-## 2.2. Conversión de variables categóricas a factor
+## Conversión de variables categóricas a factor
 
 Convertimos los atributos categóricos a tipo factor. La variable `PClass` fue clasificada como tipo `int` al leer el datase, pero en realidad solo toma tres valores (las tres clases antes comentadas).
 
@@ -139,13 +140,13 @@ titanic_data$Embarked <- as.factor(titanic_data$Embarked)
 
 
 ******
-# 3. Limpieza de los datos
+# Limpieza de los datos
 ******
 
 En este apartado vamos realizar el preprocesado de los datos para tener el conjunto de datos listo para los análisis que realizaremos posteriormente. Empezaremos estudiando los valores ausentes y después analizaremos los valores extremos de algunas variables.
 
 
-## 3.1. Valores ausentes
+## Valores ausentes
 
 Empezamos mostrando el número de valores ausentes en cada uno de los atributos del conjunto de datos.
 
@@ -220,7 +221,7 @@ titanic_data$Age[is.na(titanic_data$Age) & titanic_data$Sex == "male" &
 ```
 
 
-## 3.2. Valores extremos.
+## Valores extremos.
 
 Mostramos los diagramas de cajas de las variables continuas del conjunto de datos (`Age` y `Fare`) para comprobar si existen valores extremos en ellas.
 
@@ -286,7 +287,7 @@ plot(titanic_data$Age_d)
 ```
 
 
-## 3.3. Generar archivo con los datos preprocesados
+## Generar archivo con los datos preprocesados
 
 ```{r Generar archivo con los datos preprocesados}
 # Exportamos el conjunto de datos preprocesado a un archivo CSV
@@ -298,13 +299,13 @@ write.csv(titanic_data, file = "titanic_clean.csv", row.names = FALSE)
 
 
 ******
-# 4. Análisis de los datos
+# Análisis de los datos
 ******
 
 Ahora vamos a realizar diferentes análisis de los datos, haciendo una primera planificación de los grupos de datos y de las pruebas estadísticas que vamos a realizar para ver la relación entre las variables del conjunto de datos.
 
 
-## 4.1. Selección de los grupos de datos que se quieren analizar/comparar (planificación de los análisis a aplicar)
+## Selección de los grupos de datos que se quieren analizar/comparar (planificación de los análisis a aplicar)
 
 Durante este apartado vamos a realizar diferentes pruebas estadísticas sobre las variables de interés del conjunto de datos. Empezaremos haciendo un análisis de la normalidad y la homocedasticidad de las variables cuantitativas del conjunto de datos (`Age`, `SibSp`, `Parch` y `Fare`). Con los resultados de estos análisis podremos saber qué tipos de pruebas estadísticas (paramétricas o no paramétricas) vamos a poder realizar en los contrastes de hipótesis. Gracias a estos contrastes de hipótesis podremos analizar las relaciones entre las variables del conjunto de datos y más concretamente con la variable objetivo `Survived`, para saber qué variables tuvieron más influencia en el hecho de sobrevivir o no al accidente. También haremos un análisis de correlaciones de las variables cuantitativas para comprobar si existe relación entre ellas.
 
@@ -319,7 +320,9 @@ Una vez estudiadas las relaciones entre las variables mediante los contrastes de
 Finalmente calcularemos unos árboles de decisión (modelos supervisados) para predecir la variable objetivo `Survived` a partir del resto de variables del conjunto de datos, y analizaremos la precisión de los modelos calculados.
 
 
-## 4.2. Comprobación de la normalidad y homogeneidad de la varianza
+## Comprobación de la normalidad y homogeneidad de la varianza
+
+### Normalidad
 
 Para comprobar la normalidad de las variable cuantitativas vamos a utilizar el test de *Shapiro-Wilk*, ya que se considera uno de los métodos más potentes para contrastar la normalidad. Este método se basa en el contraste de hipótesis, asumiendo como hipótesis nula que la población sigue una distribución normal. Por tanto, nos basaremos en el *p-valor* para determinar si aceptamos o rechazamos la hipótesis nula de normalidad.
 
@@ -390,9 +393,9 @@ fligner.test(Fare ~ Survived, data = titanic_data)
 Vemos que la variable `Fare` presenta heterocedasticidad entre las distintas clases (`Pclass`), entre hombre y mujeres (`Sex`), entre los distintos puertos de embarque (`Embarked`) y entre los pasajeros que sobrevivieron y los que no (`Survived`).
 
 
-## 4.3. Aplicación de pruebas estadísticas
+## Aplicación de pruebas estadísticas
 
-###  4.3.1. Contraste de hipótesis sobre Survived
+###  Contraste de hipótesis sobre Survived
 
 A continuación vamos a ver la relación de la variable `Survived` con el resto de variables que estamos analizando, tanto cuantitativas como categóricas. Hemos visto que la variable `Age`, aunque es la única para la que se ha asumido normalidad, presenta heterocedasticidad con los distintos grupos de la variable `Survived`. Por tanto, para todas las variables cuantitativas tendremos que utilizar pruebas no paramétricas como Wilcoxon (datos dependientes) o Mann-Whitney (datos independientes). Estas dos pruebas se aplican indistintamente con la función `wilcox.test()`.
 
@@ -425,7 +428,7 @@ chisq.test(table.Embarked)
 Con estos resultados comprobamos que se rechaza la hipótesis nula para los tres casos, por tanto, observamos que tanto el sexo (`Sex`), como la clase (`Pclass`) y el puerto de embarque (`Embarked`) tuvieron repercusión en si un pasajero finalmente sobrevivió al accidente o no.
 
 
-### 4.3.2. Análisis de correlaciones
+### Análisis de correlaciones
 
 Vamos a calcular los coeficientes de correlación entre las variables cuantitativas para comprobar cuales están relacionadas linealmente entre sí. Para ello vamos a utilizar la correlación de *Spearman* (no paramétrica) para medir el grados de dependencia entre las variables.
 
@@ -445,7 +448,7 @@ corrplot.mixed(cor(titanic_data[, c('Age', 'SibSp', 'Parch', 'Fare')],
 Como podemos ver, ninguna de las variable está relacionada con las demás ya que el coeficiente de correlación es menor de $|0.5|$ en todos los casos. Por tanto, podemos decir que las variables cuantitativas son independientes entre ellas. Además, el *p-valor* nos indica que los resultados obtenidos son significativos.
 
 
-### 4.3.4. Modelo supervisado
+### Modelo supervisado
 
 **Preparación de los datos de entrenamiento y test**
 
@@ -595,11 +598,11 @@ La función *confusionMatrix()* también nos facilita otros valores como la sens
 
 **Random Forest**
 
-Vamos a calcular un modelo Random Forest con una validación cruzada con 4 *folds*. Mediante la función *train_control* especificamos las características comentadas del proceso de entrenamiento para crear el modelo.
+Vamos a calcular un modelo Random Forest con una validación cruzada con 6 *folds*. Mediante la función *train_control* especificamos las características comentadas del proceso de entrenamiento para crear el modelo.
 
 ```{r Random forest}
 # Validación cruzada
-train_control<- trainControl(method="cv", number=4)
+train_control<- trainControl(method="cv", number=6)
 
 # Random forest
 set.seed(31)
@@ -617,16 +620,16 @@ pred_rf <- predict(mod_rf, newdata=titanic_test)
 confusionMatrix(pred_rf, titanic_test$Survived, positive = "1")
 ```
 
-Con el modelo Random Forest el 78.11% de los registros del subconjunto de test fueron correctamente clasificados, por tanto, la precisión de este modelo es prácticamente la misma que la del árbol de decisión.
+Con el modelo Random Forest el 81.14% de los registros del subconjunto de test fueron correctamente clasificados, por tanto, la precisión de este modelo ha aumentado casi 3% respecto al árbol de decisión.
 
-La sensibilidad de este modelo es 62.28% y su especificidad 87,98%. Si comparamos estos valores con los obtenidos mediante el árbol de decisión vemos que el modelo Random Forest clasifica algo peor los pasajeros que no sobrevivieron, pero, en cambio, los pasajeros que sí sobrevivieron son clasificados correctamente con un porcentaje mayor.
+La sensibilidad de este modelo es 60,53% y su especificidad 93.99%. Si comparamos estos valores con los obtenidos mediante el árbol de decisión vemos que el modelo Random Forest clasifica con la misma precisión los pasajeros que no sobrevivieron, pero, en cambio, los pasajeros que sí sobrevivieron son clasificados correctamente con un porcentaje mayor.
 
 
 \pagebreak
 
 
 ******
-# 5. Representación de los resultados a partir de tablas y gráficas.
+# Representación de los resultados a partir de tablas y gráficas.
 ******
 
 A lo largo de la práctica se ha hecho uso de diferentes tipos de gráficas para comprender mejor los datos y analizarlos. En el apartado anterior por ejemplo, se mostró el árbol de decisión gráficamente para saber qué variables utilizaba en la toma de decisiones. También hemos usado gráficos QQ para comprobar la normalidad de algunas variables, diagramas de caja para observar los valores extremos o histogramas para ver la distribución de la variable `Age`. En este apartado mostraremos algunos ejemplos más para entender mejor el conjunto de datos.
@@ -688,7 +691,7 @@ La mayor parte de los pasajeros viajó sin familiares, pero se observa que la fo
 
 
 ******
-# 6. Resolución del problema y conclusiones
+# Resolución del problema y conclusiones
 ******
 
 Con todos los resultados obtenidos ya tenemos la información suficiente para responder a las cuestiones planteadas y predecir el valor de la variable objetivo mediante algunos modelos supervisados. A continuación vamos a responder a las preguntas que nos habíamos planteado al inicio del análisis:
